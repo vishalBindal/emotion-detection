@@ -160,6 +160,36 @@ for lr in [0.01, 0.05, 0.1]:
         print('Train f-1:', f1)
         f1 = accuracy(model(x_test), y_test)
         print('Test f-1:', f1)
+		
+		
+class Conv_nn(nn.Module):
+  """
+  A Convolutional neural network with layers as specified in 1c
+
+  """
+
+  def __init__(self):
+    super(ConvNet, self).__init__()
+    self.conv_layers = nn.Sequential(nn.Conv2d(1, 64, kernel_size=(3,3), stride=3, padding=0),
+                                  nn.BatchNorm2d(64),
+                                  nn.ReLU(inplace=True),
+                                  nn.MaxPool2d(kernel_size=(2,2), stride=2, padding=0),
+                                  nn.Conv2d(64, 128, kernel_size=(2,2), stride=2, padding=0),
+                                  nn.BatchNorm2d(128),
+                                  nn.ReLU(inplace=True),
+                                  nn.MaxPool2d(kernel_size=(2,2), stride=2, padding=0),
+                                  )
+    self.drop_out = nn.Dropout()
+    self.fc1 = nn.Linear(12 * 12 * 64, 256)
+    self.fc2 = nn.Linear(256, 7)
+
+  def forward(self, x):
+    out = self.conv_layers(x)
+    out = out.reshape(out.size(0), -1)
+    out = self.drop_out(out)
+    out = self.fc1(out)
+    out = self.fc2(out)
+    return out
 
 
 
