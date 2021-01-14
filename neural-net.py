@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
-
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,9 +19,6 @@ print(device)
 # np.random.seed(42)
 
 
-# In[3]:
-
-
 # Import data
 train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
 y_train = train_data[:,0]
@@ -36,25 +31,49 @@ x_test = test_data[:,1:]
 print(x_test.shape)
 
 
-# In[4]:
-
-
 # Visualising data
 #i=16
 #plt.imshow(x_train[i].reshape((48,48)), cmap='magma')
 #print(y_train[i])
 
 
-# In[5]:
+# decomment this to get gabor filter
+"""
+from skimage.filters import gabor
 
+def apply_gabor(image):
+  temp_image = image.reshape((48,48))
+  filt_real, filt_imag = gabor(temp_image, frequency=0.6)
+  filt_real = filt_real.reshape(2304)
+  return filt_real
+
+def get_gabor_features(data):
+  return np.array([apply_gabor(xi) for xi in data])
+
+x_train = get_gabor_features(x_train)
+x_test = get_gabor_features(x_test)
+"""
+
+# decomment this to get histogram of oriented gradients filter
+"""
+from skimage.feature import hog
+
+def apply_hog(image):
+  temp_image = image.reshape((48,48))
+  return hog(temp_image)
+
+def get_hog_features(data):
+  return np.array([apply_hog(xi) for xi in data])
+
+x_train = get_hog_features(x_train)
+x_test = get_hog_features(x_test)
+"""
 
 x_train = torch.tensor(x_train, dtype=torch.float).to(device)
 y_train = torch.tensor(y_train, dtype=torch.long).to(device)
 x_test = torch.tensor(x_test, dtype=torch.float).to(device)
 y_test = torch.tensor(y_test, dtype=torch.long).to(device)
 
-
-# In[6]:
 
 
 def accuracy(yhat, y):
@@ -120,7 +139,6 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size):
     final_model.to(device)
     return final_model
 
-# In[7]:
 
 for lr in [0.01, 0.05, 0.1]:
     for batch_size in [50, 100, 500]:
@@ -143,8 +161,6 @@ for lr in [0.01, 0.05, 0.1]:
         f1 = accuracy(model(x_test), y_test)
         print('Test f-1:', f1)
 
-
-# In[ ]:
 
 
 
