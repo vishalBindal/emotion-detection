@@ -21,11 +21,13 @@ print(device)
 
 # Import data
 train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
+# train_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_train = train_data[:,0]
 x_train = train_data[:,1:]
 print(x_train.shape)
 
 test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
+# test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_test = test_data[:,0]
 x_test = test_data[:,1:]
 print(x_test.shape)
@@ -67,6 +69,8 @@ def get_hog_features(data):
 
 x_train = get_hog_features(x_train)
 x_test = get_hog_features(x_test)
+
+print(x_train.shape)
 """
 
 x_train = torch.tensor(x_train, dtype=torch.float).to(device)
@@ -87,6 +91,7 @@ class Vanilla_nn(nn.Module):
     """
     def __init__(self):
         super().__init__()
+        # note: if doing with hog, change 2304 to 1296
         self.hidden = nn.Linear(2304, 100)
         self.output = nn.Linear(100, 7)
         
@@ -151,7 +156,7 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
     # return final_model
     return model
 
-
+"""
 for lr in [0.01, 0.05, 0.1]:
     for batch_size in [50, 100, 500]:
         print('Learning rate:', lr)
@@ -172,8 +177,8 @@ for lr in [0.01, 0.05, 0.1]:
         print('Train f-1:', f1)
         f1 = accuracy(model(x_test), y_test)
         print('Test f-1:', f1)
-		
-		
+"""        
+
 class Conv_nn(nn.Module):
     """
     A Convolutional neural network with layers as specified in 1c
@@ -181,29 +186,49 @@ class Conv_nn(nn.Module):
     """
 
     def __init__(self):
-        super(ConvNet, self).__init__()
-        self.conv_layers = nn.Sequential(nn.Conv2d(1, 64, kernel_size=(3,3), stride=3, padding=0),
-                                    nn.BatchNorm2d(64),
-                                    nn.ReLU(inplace=True),
-                                    nn.MaxPool2d(kernel_size=(2,2), stride=2, padding=0),
-                                    nn.Conv2d(64, 128, kernel_size=(2,2), stride=2, padding=0),
-                                    nn.BatchNorm2d(128),
-                                    nn.ReLU(inplace=True),
-                                    nn.MaxPool2d(kernel_size=(2,2), stride=2, padding=0),
+        super(Conv_nn, self).__init__()
+        self.conv_layers = nn.Sequential(nn.Conv2d(1, 64, kernel_size=3, stride=3, padding=0),
+                                    nn.BatchNorm2d(64,momentum=0.99, eps=1e-3),
+                                    nn.ReLU(),
+                                    nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
+                                    nn.Conv2d(64, 128, kernel_size=2, stride=2, padding=0),
+                                    nn.BatchNorm2d(128,momentum=0.99, eps=1e-3),
+                                    nn.ReLU(),
+                                    nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
                                     )
-        self.drop_out = nn.Dropout()
-        self.fc1 = nn.Linear(12 * 12 * 64, 256)
-        self.fc2 = nn.Linear(256, 7)
+
+        self.linear_layers = nn.Sequential(nn.Linear(512,256),
+                                            nn.BatchNorm1d(256,momentum=0.99, eps=1e-3),
+                                            nn.ReLU(),
+                                            nn.Linear(256,7),
+                                            nn.BatchNorm1d(7,momentum=0.99, eps=1e-3),
+                                            nn.ReLU()
+                                          )
 
     def forward(self, x):
         out = self.conv_layers(x)
-        out = out.reshape(out.size(0), -1)
-        out = self.drop_out(out)
-        out = self.fc1(out)
-        out = self.fc2(out)
+        # out.shape = (batch_size, 128, 2, 2)
+        out = out.view(out.shape[0],512)
+        out = self.linear_layers(out)
         return out
 
+lr = 0.01
+batch_size = 100
 
+print('Learning rate:', lr)
+print('Batch size:', batch_size)
+print('-------------------')
+model = Conv_nn().to(device)
+
+# reshape data
+x_train = x_train.view(x_train.shape[0], 1, 48, 48)
+x_test = x_test.view(x_test.shape[0], 1, 48, 48)
+# Fit data on model
+model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
+f1 = accuracy(model(x_train), y_train)
+print('Train f-1:', f1)
+f1 = accuracy(model(x_test), y_test)
+print('Test f-1:', f1)
 
 
 
