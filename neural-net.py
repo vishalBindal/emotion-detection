@@ -21,11 +21,13 @@ print(device)
 
 # Import data
 train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
+# train_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_train = train_data[:,0]
 x_train = train_data[:,1:]
 print(x_train.shape)
 
 test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
+# test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_test = test_data[:,0]
 x_test = test_data[:,1:]
 print(x_test.shape)
@@ -196,16 +198,17 @@ class Conv_nn(nn.Module):
                                     )
 
         self.linear_layers = nn.Sequential(nn.Linear(512,256),
-                                            nn.BatchNorm2d(256,momentum=0.99, eps=1e-3),
+                                            nn.BatchNorm1d(256,momentum=0.99, eps=1e-3),
                                             nn.ReLU(),
                                             nn.Linear(256,7),
-                                            nn.BatchNorm2d(7,momentum=0.99, eps=1e-3),
+                                            nn.BatchNorm1d(7,momentum=0.99, eps=1e-3),
                                             nn.ReLU()
                                           )
 
     def forward(self, x):
         out = self.conv_layers(x)
-        out = out.view(100,512)
+        # out.shape = (batch_size, 128, 2, 2)
+        out = out.view(out.shape[0],512)
         out = self.linear_layers(out)
         return out
 
@@ -217,7 +220,10 @@ print('Batch size:', batch_size)
 print('-------------------')
 model = Conv_nn().to(device)
 
-                                # Fit data on model
+# reshape data
+x_train = x_train.view(x_train.shape[0], 1, 48, 48)
+x_test = x_test.view(x_test.shape[0], 1, 48, 48)
+# Fit data on model
 model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
 f1 = accuracy(model(x_train), y_train)
 print('Train f-1:', f1)
