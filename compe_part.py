@@ -43,11 +43,21 @@ x_test = torch.tensor(x_test, dtype=torch.float).to(device)
 y_test = torch.tensor(y_test, dtype=torch.long).to(device)
 
 
-
-def accuracy(yhat, y):
-    preds = torch.argmax(yhat, dim=1)
+def accuracy(preds, y):
     return 100*f1_score(y.to(torch.device('cpu')), preds.to(torch.device('cpu')), average='macro')
 
+def predict(model, x_test):
+    test_ds = TensorDataset(x_test)
+    test_dl = DataLoader(test_ds, batch_size=100)
+    preds = None
+    for xb in test_dl:
+        yhatb = model(xb[0])
+        predsb = torch.argmax(yhatb, dim=1)
+        if preds is not None:
+            preds = torch.cat((preds, predsb), 0)
+        else:
+            preds = predsb
+    return preds
     
 def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
     """
@@ -113,9 +123,15 @@ model = initialize_model().to(device)
 # reshape data
 x_train = x_train.view(x_train.shape[0], 1, 48, 48)
 x_test = x_test.view(x_test.shape[0], 1, 48, 48)
+
+# augment flipped data
+x_flipped = torch.flip(x_train, [3])
+x_train = torch.cat((x_train, x_flipped), 0)
+y_train = torch.cat((y_train, y_train), 0)
+
 # Fit data on model
 model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
-f1 = accuracy(model(x_train), y_train)
+f1 = accuracy(predict(model, x_train), y_train)
 print('Train f-1:', f1)
-f1 = accuracy(model(x_test), y_test)
+f1 = accuracy(predict(model, x_test), y_test)
 print('Test f-1:', f1)
