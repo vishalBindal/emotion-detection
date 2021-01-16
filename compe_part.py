@@ -3,6 +3,7 @@
 
 
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -88,16 +89,16 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
     return model
 
 def initialize_model(num_labels=7):
-	model = resnet50(pretrained=True)
+    model = resnet50(pretrained=True)
     w = torch.zeros((64, 1, 7, 7))
     nn.init.kaiming_uniform_(w, a=math.sqrt(5))
     
     model.conv1.weight.data = w
 	
-	conv_out_features = model.fc.in_features
+    conv_out_features = model.fc.in_features
     model.fc = nn.Linear(conv_out_features, num_labels)
 	
-	return model
+    return model
 	
 
 lr = 0.01
