@@ -3,6 +3,7 @@
 
 
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -10,9 +11,9 @@ import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import TensorDataset, DataLoader, random_split
 from sklearn.metrics import f1_score
-
+import csv
 from torchvision.models import resnet50
-from torchvision.transforms import Compose, Resize, Grayscale, ToTensor
+from torchvision.transforms import Compose, Resize, Grayscale, ToTensor, Normalize
 import copy
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -29,7 +30,8 @@ y_train = train_data[:,0]
 x_train = train_data[:,1:]
 print(x_train.shape)
 
-test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
+# test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
+test_data = np.genfromtxt('./datasets/private.csv', delimiter=',')
 # test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_test = test_data[:,0]
 x_test = test_data[:,1:]
@@ -42,11 +44,21 @@ x_test = torch.tensor(x_test, dtype=torch.float).to(device)
 y_test = torch.tensor(y_test, dtype=torch.long).to(device)
 
 
-
-def accuracy(yhat, y):
-    preds = torch.argmax(yhat, dim=1)
+def accuracy(preds, y):
     return 100*f1_score(y.to(torch.device('cpu')), preds.to(torch.device('cpu')), average='macro')
 
+def predict(model, x_test):
+    test_ds = TensorDataset(x_test)
+    test_dl = DataLoader(test_ds, batch_size=100)
+    preds = None
+    for xb in test_dl:
+        yhatb = model(xb[0])
+        predsb = torch.argmax(yhatb, dim=1)
+        if preds is not None:
+            preds = torch.cat((preds, predsb), 0)
+        else:
+            preds = predsb
+    return preds
     
 def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
     """
@@ -83,22 +95,28 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
         if abs(avg_loss - cur_loss) <= epsilon:
             break
         cur_loss = avg_loss
-
         
     return model
 
 def initialize_model(num_labels=7):
-	model = resnet50(pretrained=True)
-    w = torch.zeros((64, 1, 7, 7))
-    nn.init.kaiming_uniform_(w, a=math.sqrt(5))
+    model = resnet50(pretrained=True)
+    # w = torch.zeros((64, 1, 7, 7))
+    # nn.init.kaiming_uniform_(w, a=math.sqrt(5))
     
-    model.conv1.weight.data = w
+    # model.conv1.weight.data = w
 	
-	conv_out_features = model.fc.in_features
+    conv_out_features = model.fc.in_features
     model.fc = nn.Linear(conv_out_features, num_labels)
 	
-	return model
+    return model
 	
+def write_to_file(preds):
+    preds = preds.numpy()
+    with open('preds.csv', 'w') as preds_file:
+        writer = csv.writer(preds_file, delimiter=',')
+        writer.writerow(['Id', 'Prediction'])
+        for i in range(preds.shape[0]):
+            writer.writerow([i+1, int(preds[i])])
 
 lr = 0.01
 batch_size = 100
@@ -112,9 +130,31 @@ model = initialize_model().to(device)
 # reshape data
 x_train = x_train.view(x_train.shape[0], 1, 48, 48)
 x_test = x_test.view(x_test.shape[0], 1, 48, 48)
+
+# augment flipped data
+x_flipped = torch.flip(x_train, [3])
+x_train = torch.cat((x_train, x_flipped), 0)
+y_train = torch.cat((y_train, y_train), 0)
+
+# Scale all values in [0,1]
+max_val = max(torch.max(x_train), torch.max(x_test))
+x_train = x_train / max_val
+x_test = x_test / max_val
+
+# duplicate image along 3 channels
+x_train = torch.cat((x_train, x_train, x_train), 1)
+x_test = torch.cat((x_test, x_test, x_test), 1)
+
+# Normalise for model
+normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+x_train = normalize(x_train)
+x_test = normalize(x_test)
+
 # Fit data on model
 model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
-f1 = accuracy(model(x_train), y_train)
-print('Train f-1:', f1)
-f1 = accuracy(model(x_test), y_test)
-print('Test f-1:', f1)
+# f1 = accuracy(predict(model, x_train), y_train)
+# print('Train f-1:', f1)
+# f1 = accuracy(predict(model, x_test), y_test)
+# print('Test f-1:', f1)
+test_predictions = predict(model, x_test)
+write_to_file(test_predictions)

@@ -1,2 +1,6 @@
 datasets/public_test.csv
 datasets/train.csv
+datasets/private.csv
+datasets/sample_submission.csv
+datasets/private.csv.zip
+preds.csv
