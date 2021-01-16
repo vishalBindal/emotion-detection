@@ -111,6 +111,7 @@ def initialize_model(num_labels=7):
     return model
 	
 def write_to_file(preds):
+    preds = preds.to(torch.device('cpu'))
     preds = preds.numpy()
     with open('preds.csv', 'w') as preds_file:
         writer = csv.writer(preds_file, delimiter=',')
