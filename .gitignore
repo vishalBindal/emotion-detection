@@ -4,3 +4,7 @@ datasets/private.csv
 datasets/sample_submission.csv
 datasets/private.csv.zip
 preds.csv
+results/
+resne*
+try.txt
+*.ipynb*
