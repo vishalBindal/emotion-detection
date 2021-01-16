@@ -12,7 +12,7 @@ from torch import optim
 from torch.utils.data import TensorDataset, DataLoader, random_split
 from sklearn.metrics import f1_score
 import csv
-from torchvision.models import resnet50
+from torchvision.models import resnet50, resnet18, resnet34, resnet101, resnet152, resnext50_32x4d, resnext101_32x8d
 from torchvision.transforms import Compose, Resize, Grayscale, ToTensor, Normalize
 import copy
 
@@ -24,24 +24,29 @@ print(device)
 
 
 # Import data
-train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
-# train_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+# train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
+train_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_train = train_data[:,0]
 x_train = train_data[:,1:]
 print(x_train.shape)
 
 # test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
-test_data = np.genfromtxt('./datasets/private.csv', delimiter=',')
-# test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+# test_data = np.genfromtxt('./datasets/private.csv', delimiter=',')
+test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_test = test_data[:,0]
 x_test = test_data[:,1:]
 print(x_test.shape)
 
+# test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
+test_pvt = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+x_pvt = test_pvt[:,1:]
+print(x_pvt.shape)
 
 x_train = torch.tensor(x_train, dtype=torch.float).to(device)
 y_train = torch.tensor(y_train, dtype=torch.long).to(device)
 x_test = torch.tensor(x_test, dtype=torch.float).to(device)
 y_test = torch.tensor(y_test, dtype=torch.long).to(device)
+x_pvt = torch.tensor(x_pvt, dtype=torch.float).to(device)
 
 
 def accuracy(preds, y):
@@ -91,15 +96,16 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
         model.eval()
 
         avg_loss = avg_loss / count
-        print(epoch, avg_loss)
+        # print(epoch, avg_loss)
         if abs(avg_loss - cur_loss) <= epsilon:
+            print(epoch, avg_loss)
             break
         cur_loss = avg_loss
         
     return model
 
-def initialize_model(num_labels=7):
-    model = resnet50(pretrained=True)
+def initialize_model(model_name, num_labels=7):
+    model = eval(model_name)(pretrained=True)
     # w = torch.zeros((64, 1, 7, 7))
     # nn.init.kaiming_uniform_(w, a=math.sqrt(5))
     
@@ -110,27 +116,19 @@ def initialize_model(num_labels=7):
 	
     return model
 	
-def write_to_file(preds):
+def write_to_file(preds, filename):
     preds = preds.to(torch.device('cpu'))
     preds = preds.numpy()
-    with open('preds.csv', 'w') as preds_file:
+    with open(filename+'-preds.csv', 'w') as preds_file:
         writer = csv.writer(preds_file, delimiter=',')
         writer.writerow(['Id', 'Prediction'])
         for i in range(preds.shape[0]):
             writer.writerow([i+1, int(preds[i])])
 
-lr = 0.01
-batch_size = 100
-
-print('Learning rate:', lr)
-print('Batch size:', batch_size)
-print('-------------------')
-#model = Conv_nn().to(device)
-model = initialize_model().to(device)
-
 # reshape data
 x_train = x_train.view(x_train.shape[0], 1, 48, 48)
 x_test = x_test.view(x_test.shape[0], 1, 48, 48)
+x_pvt = x_pvt.view(x_pvt.shape[0], 1, 48, 48)
 
 # augment flipped data
 x_flipped = torch.flip(x_train, [3])
@@ -138,24 +136,39 @@ x_train = torch.cat((x_train, x_flipped), 0)
 y_train = torch.cat((y_train, y_train), 0)
 
 # Scale all values in [0,1]
-max_val = max(torch.max(x_train), torch.max(x_test))
+max_val = max(torch.max(x_train), torch.max(x_test), torch.max(x_pvt))
 x_train = x_train / max_val
 x_test = x_test / max_val
+x_pvt = x_pvt / max_val
 
 # duplicate image along 3 channels
 x_train = torch.cat((x_train, x_train, x_train), 1)
 x_test = torch.cat((x_test, x_test, x_test), 1)
+x_pvt = torch.cat((x_pvt, x_pvt, x_pvt), 1)
 
 # Normalise for model
 normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 x_train = normalize(x_train)
 x_test = normalize(x_test)
+x_pvt = normalize(x_pvt)
 
-# Fit data on model
-model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
-# f1 = accuracy(predict(model, x_train), y_train)
-# print('Train f-1:', f1)
-# f1 = accuracy(predict(model, x_test), y_test)
-# print('Test f-1:', f1)
-test_predictions = predict(model, x_test)
-write_to_file(test_predictions)
+lr = 0.01
+batch_size = 100
+
+print('Learning rate:', lr)
+print('Batch size:', batch_size)
+print('-------------------')
+
+models = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'resnext50_32x4d', 'resnext101_32x8d']
+for model_name in models:
+    print('Trying model:', model_name)
+    model = initialize_model(model_name).to(device)
+
+    # Fit data on model
+    model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
+    f1 = accuracy(predict(model, x_train), y_train)
+    print('Train f-1:', f1)
+    f1 = accuracy(predict(model, x_test), y_test)
+    print('Test f-1:', f1)
+    test_predictions = predict(model, x_pvt)
+    write_to_file(test_predictions, model_name)
