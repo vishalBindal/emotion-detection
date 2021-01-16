@@ -13,7 +13,7 @@ from torch.utils.data import TensorDataset, DataLoader, random_split
 from sklearn.metrics import f1_score
 
 from torchvision.models import resnet50
-from torchvision.transforms import Compose, Resize, Grayscale, ToTensor
+from torchvision.transforms import Compose, Resize, Grayscale, ToTensor, Normalize
 import copy
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -94,16 +94,15 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
         if abs(avg_loss - cur_loss) <= epsilon:
             break
         cur_loss = avg_loss
-
         
     return model
 
 def initialize_model(num_labels=7):
     model = resnet50(pretrained=True)
-    w = torch.zeros((64, 1, 7, 7))
-    nn.init.kaiming_uniform_(w, a=math.sqrt(5))
+    # w = torch.zeros((64, 1, 7, 7))
+    # nn.init.kaiming_uniform_(w, a=math.sqrt(5))
     
-    model.conv1.weight.data = w
+    # model.conv1.weight.data = w
 	
     conv_out_features = model.fc.in_features
     model.fc = nn.Linear(conv_out_features, num_labels)
@@ -128,6 +127,20 @@ x_test = x_test.view(x_test.shape[0], 1, 48, 48)
 x_flipped = torch.flip(x_train, [3])
 x_train = torch.cat((x_train, x_flipped), 0)
 y_train = torch.cat((y_train, y_train), 0)
+
+# Scale all values in [0,1]
+max_val = max(torch.max(x_train), torch.max(x_test))
+x_train = x_train / max_val
+x_test = x_test / max_val
+
+# duplicate image along 3 channels
+x_train = torch.cat((x_train, x_train, x_train), 1)
+x_test = torch.cat((x_test, x_test, x_test), 1)
+
+# Normalise for model
+normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+x_train = normalize(x_train)
+x_test = normalize(x_test)
 
 # Fit data on model
 model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
