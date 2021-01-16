@@ -67,6 +67,8 @@ def get_hog_features(data):
 
 x_train = get_hog_features(x_train)
 x_test = get_hog_features(x_test)
+
+print(x_train.shape)
 """
 
 x_train = torch.tensor(x_train, dtype=torch.float).to(device)
@@ -87,6 +89,7 @@ class Vanilla_nn(nn.Module):
     """
     def __init__(self):
         super().__init__()
+        # note: if doing with hog, change 2304 to 1296
         self.hidden = nn.Linear(2304, 100)
         self.output = nn.Linear(100, 7)
         
@@ -151,7 +154,7 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
     # return final_model
     return model
 
-
+"""
 for lr in [0.01, 0.05, 0.1]:
     for batch_size in [50, 100, 500]:
         print('Learning rate:', lr)
@@ -172,8 +175,23 @@ for lr in [0.01, 0.05, 0.1]:
         print('Train f-1:', f1)
         f1 = accuracy(model(x_test), y_test)
         print('Test f-1:', f1)
-		
-		
+"""        
+
+lr = 0.01
+batch_size = 100
+
+print('Learning rate:', lr)
+print('Batch size:', batch_size)
+print('-------------------')
+model = Vanilla_nn().to(device)
+
+                                # Fit data on model
+model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
+f1 = accuracy(model(x_train), y_train)
+print('Train f-1:', f1)
+f1 = accuracy(model(x_test), y_test)
+print('Test f-1:', f1)
+
 class Conv_nn(nn.Module):
     """
     A Convolutional neural network with layers as specified in 1c
