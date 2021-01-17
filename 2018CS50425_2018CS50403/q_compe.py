@@ -200,9 +200,8 @@ print('Train f-1:', f1)
 #test_predictions = predict(model, x_pvt)
 
 preds = predict(model, x_pvt)
-write_to_file(preds, 'model')
 preds = preds.to(torch.device('cpu'))
 preds = preds.numpy()
 preds = preds.astype(int)
-write_predictions(output_path, preds)
+write_predictions(out_file, preds)
 	
