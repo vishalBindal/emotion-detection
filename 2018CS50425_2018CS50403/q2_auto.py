@@ -21,6 +21,20 @@ x_train = train_data[:,1:]
 test_data = np.genfromtxt(test_path, delimiter=',')
 x_test = test_data[:,1:]
 
+# decomment this to get gabor filter
+"""
+from skimage.filters import gabor
+def apply_gabor(image):
+    temp_image = image.reshape((48,48))
+    filt_real, filt_imag = gabor(temp_image, frequency=0.6)
+    filt_real = filt_real.reshape(2304)
+    return filt_real
+def get_gabor_features(data):
+    return np.array([apply_gabor(xi) for xi in data])
+x_train = get_gabor_features(x_train)
+x_test = get_gabor_features(x_test)
+"""
+
 # hog
 def apply_hog(image):
     temp_image = image.reshape((48,48))
