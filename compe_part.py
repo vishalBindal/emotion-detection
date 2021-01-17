@@ -22,6 +22,15 @@ print(device)
 # torch.manual_seed(42)
 # np.random.seed(42)
 
+from skimage.transform import rotate, AffineTransform, warp
+
+def get_rotated(image,angle):
+  temp_image = image.reshape((48,48))
+  return rotate(temp_image,angle-angle,mode='wrap').reshape(2304)
+ 
+def rotated(data,angle):
+  return np.array([get_rotated(xi,angle) for xi in data])
+
 
 # Import data
 # train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
@@ -30,11 +39,21 @@ y_train = train_data[:,0]
 x_train = train_data[:,1:]
 print(x_train.shape)
 
+x_train = np.concatenate((x_train,rotated(x_train,10)) , axis=0)
+y_train = np.concatenate((y_train,y_train) , axis=0)
+
+print(x_train.shape)
+
 # test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
 # test_data = np.genfromtxt('./datasets/private.csv', delimiter=',')
 test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_test = test_data[:,0]
 x_test = test_data[:,1:]
+print(x_test.shape)
+
+x_test = np.concatenate((x_test,rotated(x_test,10),rotated(x_test,5)) , axis=0)
+y_test = np.concatenate((y_test,y_test,y_test) , axis=0)
+
 print(x_test.shape)
 
 # test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
@@ -159,7 +178,7 @@ print('Learning rate:', lr)
 print('Batch size:', batch_size)
 print('-------------------')
 
-models = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'resnext50_32x4d', 'resnext101_32x8d']
+models = ['resnext101_32x8d']
 for model_name in models:
     print('Trying model:', model_name)
     model = initialize_model(model_name).to(device)
