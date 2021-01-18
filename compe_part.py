@@ -34,7 +34,7 @@ def rotated(data,angle):
 
 # Import data
 # train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
-train_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
 y_train = train_data[:,0]
 x_train = train_data[:,1:]
 print(x_train.shape)
@@ -46,25 +46,25 @@ print(x_train.shape)
 
 # test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
 # test_data = np.genfromtxt('./datasets/private.csv', delimiter=',')
-test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
-y_test = test_data[:,0]
-x_test = test_data[:,1:]
-print(x_test.shape)
+#test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+#y_test = test_data[:,0]
+#x_test = test_data[:,1:]
+#print(x_test.shape)
 
-x_test = np.concatenate((x_test,rotated(x_test,10),rotated(x_test,5)) , axis=0)
-y_test = np.concatenate((y_test,y_test,y_test) , axis=0)
+#x_test = np.concatenate((x_test,rotated(x_test,10),rotated(x_test,5)) , axis=0)
+#y_test = np.concatenate((y_test,y_test,y_test) , axis=0)
 
-print(x_test.shape)
+#print(x_test.shape)
 
 # test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
-test_pvt = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
 x_pvt = test_pvt[:,1:]
 print(x_pvt.shape)
 
 x_train = torch.tensor(x_train, dtype=torch.float).to(device)
 y_train = torch.tensor(y_train, dtype=torch.long).to(device)
-x_test = torch.tensor(x_test, dtype=torch.float).to(device)
-y_test = torch.tensor(y_test, dtype=torch.long).to(device)
+#x_test = torch.tensor(x_test, dtype=torch.float).to(device)
+#y_test = torch.tensor(y_test, dtype=torch.long).to(device)
 x_pvt = torch.tensor(x_pvt, dtype=torch.float).to(device)
 
 
@@ -115,9 +115,9 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
         model.eval()
 
         avg_loss = avg_loss / count
-        # print(epoch, avg_loss)
+        print(epoch, avg_loss)
         if abs(avg_loss - cur_loss) <= epsilon:
-            print(epoch, avg_loss)
+            #print(epoch, avg_loss)
             break
         cur_loss = avg_loss
         
@@ -146,7 +146,7 @@ def write_to_file(preds, filename):
 
 # reshape data
 x_train = x_train.view(x_train.shape[0], 1, 48, 48)
-x_test = x_test.view(x_test.shape[0], 1, 48, 48)
+#x_test = x_test.view(x_test.shape[0], 1, 48, 48)
 x_pvt = x_pvt.view(x_pvt.shape[0], 1, 48, 48)
 
 # augment flipped data
@@ -155,20 +155,20 @@ x_train = torch.cat((x_train, x_flipped), 0)
 y_train = torch.cat((y_train, y_train), 0)
 
 # Scale all values in [0,1]
-max_val = max(torch.max(x_train), torch.max(x_test), torch.max(x_pvt))
+max_val = max(torch.max(x_train), torch.max(x_pvt))
 x_train = x_train / max_val
-x_test = x_test / max_val
+#x_test = x_test / max_val
 x_pvt = x_pvt / max_val
 
 # duplicate image along 3 channels
 x_train = torch.cat((x_train, x_train, x_train), 1)
-x_test = torch.cat((x_test, x_test, x_test), 1)
+#x_test = torch.cat((x_test, x_test, x_test), 1)
 x_pvt = torch.cat((x_pvt, x_pvt, x_pvt), 1)
 
 # Normalise for model
 normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 x_train = normalize(x_train)
-x_test = normalize(x_test)
+#x_test = normalize(x_test)
 x_pvt = normalize(x_pvt)
 
 lr = 0.01
@@ -184,10 +184,10 @@ for model_name in models:
     model = initialize_model(model_name).to(device)
 
     # Fit data on model
-    model = fit(model, x_train, y_train, learning_rate=lr, epochs=100, batch_size=batch_size, epsilon=1e-4)
+    model = fit(model, x_train, y_train, learning_rate=lr, epochs=50, batch_size=batch_size, epsilon=1e-4)
     f1 = accuracy(predict(model, x_train), y_train)
     print('Train f-1:', f1)
-    f1 = accuracy(predict(model, x_test), y_test)
-    print('Test f-1:', f1)
+    #f1 = accuracy(predict(model, x_test), y_test)
+    #print('Test f-1:', f1)
     test_predictions = predict(model, x_pvt)
     write_to_file(test_predictions, model_name)
