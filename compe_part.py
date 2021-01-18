@@ -44,17 +44,17 @@ y_train = np.concatenate((y_train,y_train) , axis=0)
 
 print(x_train.shape)
 
-# test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
+test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
 # test_data = np.genfromtxt('./datasets/private.csv', delimiter=',')
 #test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
-#y_test = test_data[:,0]
-#x_test = test_data[:,1:]
-#print(x_test.shape)
+y_test = test_data[:,0]
+x_test = test_data[:,1:]
+print(x_test.shape)
 
-#x_test = np.concatenate((x_test,rotated(x_test,10),rotated(x_test,5)) , axis=0)
-#y_test = np.concatenate((y_test,y_test,y_test) , axis=0)
+x_test = np.concatenate((x_test,rotated(x_test,10),rotated(x_test,5)) , axis=0)
+y_test = np.concatenate((y_test,y_test,y_test) , axis=0)
 
-#print(x_test.shape)
+print(x_test.shape)
 
 # test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
 test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
@@ -63,8 +63,8 @@ print(x_pvt.shape)
 
 x_train = torch.tensor(x_train, dtype=torch.float).to(device)
 y_train = torch.tensor(y_train, dtype=torch.long).to(device)
-#x_test = torch.tensor(x_test, dtype=torch.float).to(device)
-#y_test = torch.tensor(y_test, dtype=torch.long).to(device)
+x_test = torch.tensor(x_test, dtype=torch.float).to(device)
+y_test = torch.tensor(y_test, dtype=torch.long).to(device)
 x_pvt = torch.tensor(x_pvt, dtype=torch.float).to(device)
 
 
@@ -146,8 +146,12 @@ def write_to_file(preds, filename):
 
 # reshape data
 x_train = x_train.view(x_train.shape[0], 1, 48, 48)
-#x_test = x_test.view(x_test.shape[0], 1, 48, 48)
+x_test = x_test.view(x_test.shape[0], 1, 48, 48)
 x_pvt = x_pvt.view(x_pvt.shape[0], 1, 48, 48)
+
+# add public test to train
+x_train = torch.cat((x_train, x_test), 0)
+y_train = torch.cat((y_train, y_test), 0)
 
 # augment flipped data
 x_flipped = torch.flip(x_train, [3])
@@ -157,7 +161,6 @@ y_train = torch.cat((y_train, y_train), 0)
 # Scale all values in [0,1]
 max_val = max(torch.max(x_train), torch.max(x_pvt))
 x_train = x_train / max_val
-#x_test = x_test / max_val
 x_pvt = x_pvt / max_val
 
 # duplicate image along 3 channels
