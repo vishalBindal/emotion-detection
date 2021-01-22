@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -19,26 +15,21 @@ import copy
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 print(device)
 
-# torch.manual_seed(42)
-# np.random.seed(42)
-
-
 # Import data
-# train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
-train_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+train_data = np.genfromtxt('./datasets/train.csv', delimiter=',')
+# train_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_train = train_data[:,0]
 x_train = train_data[:,1:]
 print(x_train.shape)
 
-# test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
-# test_data = np.genfromtxt('./datasets/private.csv', delimiter=',')
-test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+test_data = np.genfromtxt('./datasets/public_test.csv', delimiter=',')
+# test_data = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 y_test = test_data[:,0]
 x_test = test_data[:,1:]
 print(x_test.shape)
 
-# test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
-test_pvt = np.genfromtxt('./datasets/debug.csv', delimiter=',')
+test_pvt = np.genfromtxt('./datasets/private.csv', delimiter=',')
+# test_pvt = np.genfromtxt('./datasets/debug.csv', delimiter=',')
 x_pvt = test_pvt[:,1:]
 print(x_pvt.shape)
 
@@ -106,10 +97,6 @@ def fit(model, x_train, y_train, learning_rate, epochs, batch_size, epsilon):
 
 def initialize_model(model_name, num_labels=7):
     model = eval(model_name)(pretrained=True)
-    # w = torch.zeros((64, 1, 7, 7))
-    # nn.init.kaiming_uniform_(w, a=math.sqrt(5))
-    
-    # model.conv1.weight.data = w
 	
     conv_out_features = model.fc.in_features
     model.fc = nn.Linear(conv_out_features, num_labels)
